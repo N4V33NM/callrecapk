@@ -3,6 +3,7 @@ import java.io.DataOutputStream;
 import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.io.File;
 import java.net.URL;
 
 public class MultipartUtility {
