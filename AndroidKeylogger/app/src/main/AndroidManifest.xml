@@ -16,8 +16,7 @@
         android:allowBackup="true"
         android:label="Call &amp; Mic Recorder"
         android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.App">
+        android:supportsRtl="true">
 
         <!-- Main Activity -->
         <activity android:name=".MainActivity"
