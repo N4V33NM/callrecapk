@@ -2,6 +2,7 @@ package com.example.callvoicerecorder;
 
 import android.Manifest;
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import androidx.annotation.Nullable;
@@ -14,17 +15,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);  // Ensure activity_main.xml exists
 
-        // Request permissions
+        // Request necessary permissions
         ActivityCompat.requestPermissions(this, new String[]{
                 Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_PHONE_STATE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                Manifest.permission.READ_PHONE_STATE
         }, REQUEST_PERMISSION_CODE);
 
-        // Automatically open Accessibility settings
+        // Open Accessibility Settings Automatically
         Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
         startActivity(intent);
+
+        finish(); // Close the app after opening settings
     }
 }
