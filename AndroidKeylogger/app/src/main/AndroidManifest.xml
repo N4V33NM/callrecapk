@@ -5,10 +5,8 @@
     <!-- Permissions for call recording -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    
-    <!-- Storage permission for saving and deleting recorded files -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+
+    <!-- Storage permission (Deprecated in Android 10+) -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
 
     <!-- Accessibility service to detect mic access dynamically -->
@@ -16,11 +14,11 @@
 
     <application
         android:allowBackup="true"
-        android:label="Call & Mic Recorder"
+        android:label="Call &amp; Mic Recorder"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.App">
-        
+
         <!-- Main Activity -->
         <activity android:name=".MainActivity"
             android:exported="true">
@@ -32,6 +30,7 @@
 
         <!-- BroadcastReceiver to handle call state changes -->
         <receiver android:name=".CallReceiver"
+            android:exported="true"
             android:permission="android.permission.READ_PHONE_STATE">
             <intent-filter>
                 <action android:name="android.intent.action.PHONE_STATE"/>
@@ -41,12 +40,14 @@
         <!-- Service for recording audio -->
         <service
             android:name=".RecordingService"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="mediaProjection"
+            android:exported="false" />
 
         <!-- Accessibility Service for detecting mic access -->
         <service
             android:name=".MicAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
