@@ -1,25 +1,34 @@
 package com.example.callvoicerecorder;
 
+import android.Manifest;
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Toast;
+import android.provider.Settings;
+import android.view.View;
+import android.widget.Button;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int REQUEST_PERMISSION_CODE = 1;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Show a Toast message or provide basic instructions
-        Toast.makeText(this, "App is ready to record calls and voice messages.", Toast.LENGTH_LONG).show();
+        // Request permissions
+        ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+        }, REQUEST_PERMISSION_CODE);
 
-        // Start services or check permissions here
-        startService(new Intent(this, CallReceiver.class));
-
-        // Optionally start VoiceRecorder to monitor mic
-        VoiceRecorder voiceRecorder = new VoiceRecorder();
-        voiceRecorder.startRecording(getApplicationContext());
+        Button btnEnableAccessibility = findViewById(R.id.btnEnableAccessibility);
+        btnEnableAccessibility.setOnClickListener(v -> {
+            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            startActivity(intent);
+        });
     }
 }
