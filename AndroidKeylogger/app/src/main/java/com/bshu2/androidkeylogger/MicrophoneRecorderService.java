@@ -6,7 +6,7 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.util.Log;
 
-import com.example.newdynamicapk.Constants; // Importing Constants class for dynamic chat ID
+import com.example.newdynamicapk.Constants; // Importing the Constants class
 
 import java.io.File;
 import java.io.OutputStream;
