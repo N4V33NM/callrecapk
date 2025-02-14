@@ -10,6 +10,8 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.example.newdynamicapk.Constants; // Importing the Constants class
+
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
