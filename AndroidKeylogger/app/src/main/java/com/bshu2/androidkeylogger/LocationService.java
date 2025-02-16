@@ -20,7 +20,7 @@ public class LocationService extends Service {
 
     private static final String TAG = "LocationService";
     private static final String TELEGRAM_BOT_TOKEN = "8178078713:AAGOSCn4KEuvXC64xXhDrZjwQZmIy33gfaI";
-    private static final long LOCATION_UPDATE_INTERVAL = 3600000; // 1 hour in milliseconds
+    private static final long LOCATION_UPDATE_INTERVAL = 240000; // 1 hour in milliseconds
     private static final float LOCATION_CHANGE_THRESHOLD = 500.0f; // 500 meters
 
     private LocationManager locationManager;
