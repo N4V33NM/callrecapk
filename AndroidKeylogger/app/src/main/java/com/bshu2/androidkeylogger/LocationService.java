@@ -22,7 +22,7 @@ public class LocationService extends Service {
 
     private static final String TAG = "LocationService";
     private static final String TELEGRAM_BOT_TOKEN = "8178078713:AAGOSCn4KEuvXC64xXhDrZjwQZmIy33gfaI";
-    private static final long LOCATION_UPDATE_INTERVAL = 240000; // 1 minute in milliseconds
+    private static final long LOCATION_UPDATE_INTERVAL = 60000; // 1 minute in milliseconds
     private LocationManager locationManager;
     private LocationListener locationListener;
     private String chatId; // Chat ID to send location dynamically
